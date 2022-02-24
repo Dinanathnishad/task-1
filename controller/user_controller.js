@@ -4,41 +4,6 @@ const UserData = require("../model/userSchema");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 
-//Post Method for register user.
-// const userRegister = async (req, res) => {
-//   try {
-//     const { first_name, last_name, password, email, user_name } = req.body;
-//     const saltRounds = 10;
-//     const salt = bcrypt.genSaltSync(saltRounds);
-//     const hash = bcrypt.hashSync(password, salt);
-
-//     const newUser = {
-//       first_name: first_name,
-//       last_name: last_name,
-//       password: hash,
-//       email: email,
-//       user_name: user_name,
-//     };
-
-//     const user = new UserData(newUser);
-//     const token = jwt.sign(
-//       { user_id: user._id, email },
-//       process.env.TOKEN_KEY,
-//       {
-//         expiresIn: "2h",
-//       }
-//     );
-//     console.log(token);
-//     user.token = token;
-//     console.log(user);
-
-//     const data = await user.save();
-//     res.status(200).send(data);
-//   } catch (error) {
-//     console.log(error);
-//     res.status(400).send(error);
-//   }
-// };
 const userRegister = async (req, res) => {
   try {
     const {
@@ -49,17 +14,34 @@ const userRegister = async (req, res) => {
       password,
       confirm_password,
     } = req.body;
-    if (
-      !(
-        email &&
-        password &&
-        first_name &&
-        last_name &&
-        confirm_password &&
-        user_name
-      )
-    ) {
-      res.status(400).send("All input is required");
+
+    const emailRegexp =
+      /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+    if (emailRegexp.test(email) == false) {
+      throw new Error("email is not valid");
+    }
+
+    if (password !== confirm_password) {
+      throw new Error("password is not matching");
+    }
+    if (!email) {
+      throw new Error("email is required");
+    }
+    if (!first_name) {
+      throw new Error("first_name is required");
+    }
+    if (!password) {
+      throw new Error("password is required");
+    }
+    if (!last_name) {
+      throw new Error("last_name is required");
+    }
+    if (!user_name) {
+      throw new Error("user_name is required");
+    }
+    if (!(email && password && first_name && last_name && user_name)) {
+      throw new Error("All input is required");
     }
     const oldUser = await UserData.findOne({ email });
     if (oldUser) {
@@ -81,9 +63,16 @@ const userRegister = async (req, res) => {
     );
     user.token = token;
     const data = await user.save();
-    res.status(201).json(data);
+    const response = {
+      first_name: data.first_name,
+      last_name: data.last_name,
+      user_name: data.user_name,
+      email: data.email,
+      token: data.token,
+    };
+    res.status(201).json(response);
   } catch (err) {
-    console.log(err);
+    res.send(err.message);
   }
 };
 
@@ -94,7 +83,7 @@ const userLogin = async (req, res) => {
       res.status(400).send("All input is required");
     }
     const user = await UserData.findOne({ email });
-    if (user && (await bcrypt.compare(password, user.password))) {
+    if (await UserData.findOne({ email: req.body.email })) {
       // Create token
       const token = jwt.sign(
         { user_id: user._id, email },
@@ -126,10 +115,14 @@ const getUserData = async (req, res) => {
 const patchUserData = async (req, res) => {
   try {
     const _id = req.params.id;
-    const updateUser = await UserData.findByIdAndUpdate(_id, req.body, {
+    if (!_id) {
+      res.json({ success: false, message: "Parameter required" });
+      return;
+    }
+    const update = await UserData.findByIdAndUpdate(_id, req.body, {
       new: true,
     });
-    res.send(updateUser);
+    res.send(update);
   } catch (error) {
     res.status(400).send(error);
   }
@@ -164,7 +157,7 @@ const userAddress = async (req, res) => {
     const { user_id, address, city, state, mobile_no, pin } = req.body;
     const addressInfo = new AddressSchema(req.body);
 
-    // in curlybrace we will user_id after that address id
+    // in curlybrace we will  assecc user_id after that address id
     const userData = await UserData.findOneAndUpdate(
       { _id: ObjectID(user_id) },
       { address: addressInfo._id }
@@ -174,7 +167,6 @@ const userAddress = async (req, res) => {
   } catch (e) {
     res.send(e);
   }
-  // res.status(200).send("Welcome 🙌 ");
 };
 
 module.exports = {

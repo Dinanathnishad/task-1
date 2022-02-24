@@ -19,6 +19,7 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
     trim: true,
+    select: false,
   },
 
   confirm_password: {
@@ -27,6 +28,7 @@ const userSchema = new mongoose.Schema({
   },
   user_name: {
     type: String,
+    unique: true,
   },
   token: {
     type: String,
